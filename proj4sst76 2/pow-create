@@ -1,0 +1,78 @@
+#!/usr/bin/python3
+import sys
+import random
+import string
+import hashlib
+import time
+try:
+    if(len(sys.argv) == 3):
+        dlength = int(sys.argv[1])
+        pfile = sys.argv[2]       
+except:
+    print("incorrect usage")
+    sys.exit(3)
+
+validcharacters= ''
+for i in range(35, 39):
+    validcharacters= validcharacters + chr(i)
+for i in range(40, 127):
+    validcharacters= validcharacters + chr(i) 
+
+validcharacters = validcharacters + chr(33)
+
+
+def generatedHS(string, N):
+	suffix = ''.join(random.choice(validcharacters) for _ in range(N))
+	answer = string + suffix
+	return answer,suffix
+
+try:
+    with open(pfile,"rb") as f:
+        plaintext= f.read()
+except:
+    print("incorrect usage, testfile does not exist")
+    sys.exit(3)
+
+def difficulty(length):
+	test_string = ''
+	N = length
+	K = '0'
+	res = test_string.ljust(N + len(test_string), K)
+	return res
+
+def hextobin(h):
+  return bin(int(h, 16))[2:].zfill(len(h) * 4)
+
+leadingzeros = difficulty(dlength)
+a_string = plaintext
+
+hashed_string = hashlib.sha256(a_string).hexdigest()
+stopper = 0
+count = 1
+incrementer = 2
+
+start_time = time.time()
+while True:
+	check = (30** incrementer)
+	generated,suffix = generatedHS(hashed_string, count)
+	test = hashlib.sha256(generated.encode('utf-8')).hexdigest()
+	binarynum = hextobin(test)[0:dlength]
+	stopper = stopper + 1
+	if(binarynum == leadingzeros):
+		s = hextobin(test)
+		print("File: " + pfile)
+		print("Initial-hash: " + hashed_string)
+		print("Proof-of-work: " + suffix)
+		print("Hash: " + test)
+		print("Leading-zero-bits: " + str(len(s) - len(s.lstrip('0'))))
+		print("Iterations: " + str(stopper))
+		print("Compute Time: " + str(time.time() - start_time))
+		break
+	if(stopper == check):
+		count += 1
+		incrementer += 1
+	elif(stopper == 1000000000):
+		break
+
+	
+

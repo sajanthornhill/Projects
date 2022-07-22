@@ -1,0 +1,146 @@
+#!/usr/bin/python3
+import sys
+import random
+import string
+import hashlib
+
+
+if(len(sys.argv) == 3):
+    header = sys.argv[1]
+    pfile = sys.argv[2]
+else:
+    print("incorrect usage")
+    sys.exit(3)
+
+try:
+    with open(pfile,"rb") as f:
+        plaintext= f.read()
+except: 
+    print("incorrect usage, testfile does not exist")
+    sys.exit(3)
+
+header_name = ''
+header_initial_hash = ''
+header_proof_of_work = ''
+header_Hash = ''
+header_leading_zeros = ''
+try:    
+    with open(header,"r") as f:
+        y = 0
+        for y in range(9):
+            line = f.readline()
+            if "File: " in line:
+                header_name = line
+            elif "Initial-hash: " in line:
+                header_initial_hash = line
+            elif "Proof-of-work: " in line:
+                header_proof_of_work = line
+            elif "Hash: " in line:
+                header_Hash = line
+            elif "Leading-zero-bits: " in line:
+                header_leading_zeros = line
+except:
+    print("header file: " + header + " doesn't exist")
+    sys.exit(3)
+
+
+def hextobin(h):
+  return bin(int(h, 16))[2:].zfill(len(h) * 4)
+
+missing_proof_of_work = False
+missing_header_hash = False
+
+#testfile hash creation
+check_hashed_string = hashlib.sha256(plaintext).hexdigest()
+
+if not header_initial_hash:
+    header_initial_hash = ''
+else:
+#header hash extraction
+    temp = header_initial_hash.split()
+    try:
+        header_initial_hash = temp[1].strip()
+    except:
+        header_initial_hash = ''
+
+if not header_proof_of_work:
+    header_suffix = ''
+else:
+#header suffix extraction
+    temp = header_proof_of_work.split()
+    try:
+        header_suffix = temp[1].strip()
+    except:
+        header_suffix = ''
+
+#testfile initial hash + header suffix
+check_POW = check_hashed_string + header_suffix
+#create hash of this test hash
+check_Hash = hashlib.sha256(check_POW.encode('utf-8')).hexdigest()
+
+#take the hash from the header
+if not header_Hash:
+    header_final_hash =  ''
+else:
+    temp = header_Hash.split()
+    try:
+        header_final_hash = temp[1].strip()
+    except:
+        header_final_hash = ''
+
+
+binary = hextobin(check_Hash)
+testBinary = len(binary) - len(binary.lstrip('0'))
+
+alltestpassed = True
+if not header_leading_zeros:
+    header_lZB = ''
+else:
+    temp = header_leading_zeros.split()
+    try:
+        header_lZB = temp[1].strip()
+    except:
+        header_lZB = ''
+
+if(check_hashed_string == header_initial_hash):
+    print("PASSED: initial file hashes match") 
+else:
+    if not header_initial_hash:
+        print("ERROR: missing Initial-hash in header")
+        alltestpassed = False
+    else: 
+        print("ERROR: initial hashes don't match")
+        print("     hash in header: " + header_initial_hash)
+        print("     file hash: " + check_hashed_string)
+        alltestpassed = False
+
+if(str(testBinary) == header_lZB):
+    print("PASSED: leading bits is correct")
+else:
+    if not header_suffix:
+        print("ERROR: missing proof of work value in header")
+        alltestpassed = False
+    elif not header_lZB:
+        print("ERROR: missing header leading-bits value")
+        alltestpassed = False
+    else:
+        print("ERROR: incorrect Leading-bits value: " + header_lZB  + ", but hash has " + str(testBinary) + " leading zero bits")
+        alltestpassed = False
+
+if(check_Hash == header_final_hash):
+    print("PASSED: pow hash matches Hash header")
+else:
+    if not header_final_hash:
+        print("ERROR: missing header hash")
+        alltestpassed = False
+    else:
+        print("ERROR: pow hash does not match Hash header")
+        print("     expected: " + check_Hash)
+        print("     header has: " + header_final_hash)
+        alltestpassed = False
+
+if(alltestpassed == True):
+    print("pass")
+else:
+    print("fail")
+
